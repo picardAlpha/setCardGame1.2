@@ -1,12 +1,12 @@
 package bguspl.set.ex;
 
 import bguspl.set.Env;
+import org.w3c.dom.ls.LSOutput;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -19,6 +19,7 @@ public class Dealer implements Runnable {
      * The game environment object.
      */
     private final Env env;
+
 
     /**
      * Game entities.
@@ -37,10 +38,9 @@ public class Dealer implements Runnable {
     private volatile boolean terminate;
 
     /**
-     * The time when the dealer needs to reshuffle the deck due to turn timeout.
+     * The time when the dealer countdown times out (at which point he must collect the cards and reshuffle the deck).
      */
-    private long reshuffleTime = Long.MAX_VALUE;
-
+    private long countdownUntil;
 
     //Added
 
@@ -48,6 +48,10 @@ public class Dealer implements Runnable {
     long lastTime = System.currentTimeMillis();
     AtomicBoolean tableIsFull = new AtomicBoolean(false);
 
+
+
+
+    //TODO CHANGING CONSTRUCTOR NOT ALLOWED (If it changes the main initialization)
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
         this.table = table;
@@ -56,6 +60,9 @@ public class Dealer implements Runnable {
         //Added
         tableIsFull.getAndSet(false);
 
+
+        // Added
+
     }
 
     /**
@@ -63,29 +70,49 @@ public class Dealer implements Runnable {
      */
     @Override
     public void run() {
-        System.out.println("dealer started.");
-        env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + " starting.");
-        env.logger.log(Level.INFO, "I'm the dealer. The cards in my deck are : " + deck);
+        System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
+
+        //Added
+        System.out.println("I'm the dealer. The cards in my deck are :");
+        for(int card: deck) {
+            System.out.print(card);
+            if(card != 80)
+                System.out.printf(", ");
+        }
+        System.out.println();
+        System.out.println("CountDownUntil = " +countdownUntil);
+
         while (!shouldFinish()) {
             Collections.shuffle(deck);
-            if(timer.get() == 60)
+            if(timer.get()==60)
                 placeCardsOnTable();
-            timerLoop();
-            updateTimerDisplay(false);
-            removeAllCardsFromTable();
+            countdownLoop();
+//            removeAllCardsFromTable();
+
+            //Added
+            System.out.println("CountDownUntil = " +countdownUntil);
+
         }
         announceWinners();
-        env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + " terminated.");
+        System.out.printf("Info: Thread %s terminated.%n", Thread.currentThread().getName());
     }
 
     /**
      * The inner loop of the dealer thread that runs as long as the countdown did not time out.
      */
-    private void timerLoop() {
-        while (!terminate && System.currentTimeMillis() < reshuffleTime) {
-            sleepUntilWokenOrTimeout();
-            updateTimerDisplay(false);
+    private void countdownLoop() {
+        resetCountdown();
+        while (!terminate && System.currentTimeMillis() < countdownUntil) {
+            updateCountdown();
+            try {
+                sleepUntilWokenOrTimeout();
+            }
+            catch (InterruptedException e ) {
+            }
+
+            // Invoke only if needed. Sends dealer thread to sleep.
             removeCardsFromTable();
+            // Invoke only if needed. Sends dealer thread to sleep
             placeCardsOnTable();
         }
     }
@@ -99,7 +126,6 @@ public class Dealer implements Runnable {
 
     /**
      * Check if the game should be terminated or the game end conditions are met.
-     *
      * @return true iff the game should be finished.
      */
     private boolean shouldFinish() {
@@ -107,7 +133,7 @@ public class Dealer implements Runnable {
     }
 
     /**
-     * Checks cards should be removed from the table and removes them.
+     * Checks if any cards should be removed from the table and returns them to the deck.
      */
     private void removeCardsFromTable() {
         // TODO implement
@@ -118,20 +144,56 @@ public class Dealer implements Runnable {
      */
     private void placeCardsOnTable() {
         // TODO implement
+
+        //Added
+        //TODO : Only place cards if needed! This will fix the timer.
+        //TODO : Scenario 1 : timer ran out.
+        //TODO : Scenario 2 : Player Chose 3 cards, and
+
+        if(!tableIsFull.get()) {
+            System.out.println("Dealer : Trying to place cards on table. ");
+            for (int i = 0; i < 12 && i<deck.size(); i++) {  // Place cards until table is full or deck is empty
+                table.placeCard(deck.indexOf(i), i);
+            }
+            tableIsFull.getAndSet(true);
+        }
     }
 
     /**
      * Sleep for a fixed amount of time or until the thread is awakened for some purpose.
      */
-    private void sleepUntilWokenOrTimeout() {
-        // TODO implement
+    private void sleepUntilWokenOrTimeout() throws InterruptedException {
+        // TODO: is that the intent?
+        synchronized (this){
+            wait(200);
+        }
+
     }
 
     /**
-     * Reset and/or update the countdown and the countdown display.
+     * Update the countdown display.
      */
-    private void updateTimerDisplay(boolean reset) {
+    private void updateCountdown() {
         // TODO implement
+//        System.out.println(System.currentTimeMillis()-lastTime);
+        if(System.currentTimeMillis() - lastTime > 999) {
+            timer.decrementAndGet();
+            System.out.println("Setting timer to : "+ timer.get());
+            boolean warn = timer.get() <= 10;
+            table.env.ui.setCountdown(timer.get()*1000, warn);
+            lastTime = System.currentTimeMillis();
+            if(timer.get() == 0 ){ timer.set(60); tableIsFull.set(false);}
+        }
+    }
+
+    /**
+     * Reset the countdown timer and update the countdown display.
+     */
+    private void resetCountdown() {
+        if (env.config.turnTimeoutMillis > 0) {
+            countdownUntil = System.currentTimeMillis() + env.config.turnTimeoutMillis;
+            updateCountdown();
+        }
     }
 
     /**
@@ -146,5 +208,11 @@ public class Dealer implements Runnable {
      */
     private void announceWinners() {
         // TODO implement
+    }
+
+
+    // Dealer receives request from player
+    public void placeToken(int player, int slot){
+        table.placeToken(player,slot);
     }
 }

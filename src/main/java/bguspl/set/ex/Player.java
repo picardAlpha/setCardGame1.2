@@ -1,8 +1,13 @@
 package bguspl.set.ex;
 
-import java.util.logging.Level;
-
 import bguspl.set.Env;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+
+import static java.lang.Thread.sleep;
 
 /**
  * This class manages the players' threads and data
@@ -52,20 +57,38 @@ public class Player implements Runnable {
      */
     private int score;
 
+    //Added
+    List<Character> keyList ;
+
+    Queue<Integer> keysPressed = new LinkedList<>();
+
+
+
+
+
     /**
      * The class constructor.
      *
-     * @param env    - the environment object.
-     * @param dealer - the dealer object.
+     * @param env    - the game environment object.
      * @param table  - the table object.
+     * @param dealer - the dealer object.
      * @param id     - the id of the player.
      * @param human  - true iff the player is a human player (i.e. input is provided manually, via the keyboard).
      */
-    public Player(Env env, Dealer dealer, Table table, int id, boolean human) {
+    public Player(Env env, Dealer dealer, Table table, int id, boolean human) { //TODO CHANGING CONSTRUCTOR NOT ALLOWED
         this.env = env;
         this.table = table;
         this.id = id;
         this.human = human;
+        keyList = id==1?
+                new ArrayList<Character>() {{
+                    add('q');
+                    add('w');
+                } }:
+                new ArrayList<Character>() {{
+                    add('u');
+                    add('i');
+                } };
     }
 
     /**
@@ -74,14 +97,15 @@ public class Player implements Runnable {
     @Override
     public void run() {
         playerThread = Thread.currentThread();
-        env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + "starting.");
+        System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
         if (!human) createArtificialIntelligence();
 
         while (!terminate) {
             // TODO implement main player loop
+
         }
         if (!human) try { aiThread.join(); } catch (InterruptedException ignored) {}
-        env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + " terminated.");
+        System.out.printf("Info: Thread %s terminated.%n", Thread.currentThread().getName());
     }
 
     /**
@@ -89,16 +113,20 @@ public class Player implements Runnable {
      * key presses. If the queue of key presses is full, the thread waits until it is not full.
      */
     private void createArtificialIntelligence() {
-        // note: this is a very very smart AI (!)
+        // note: this is a very, very smart AI (!)
         aiThread = new Thread(() -> {
-            env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + " starting.");
+            System.out.printf("Info: Thread %s starting.%n", Thread.currentThread().getName());
             while (!terminate) {
                 // TODO implement player key press simulator
+                    Character keyToPress = keyList.get((int) ((Math.random() * keyList.size())));
+                    //TODO Consider implementing using playerKeys array in config
+                    //TODO Slot number is column +totalColumns*row
+
                 try {
                     synchronized (this) { wait(); }
                 } catch (InterruptedException ignored) {}
             }
-            env.logger.log(Level.INFO, "Thread " + Thread.currentThread().getName() + " terminated.");
+            System.out.printf("Info: Thread %s terminated.%n", Thread.currentThread().getName());
         }, "computer-" + id);
         aiThread.start();
     }
@@ -115,9 +143,43 @@ public class Player implements Runnable {
      *
      * @param slot - the slot corresponding to the key pressed.
      */
-    public void keyPressed(int slot) {
+    public void keyPressed(int slot) {//slot) {
         // TODO implement
-    }
+
+        //a key was received from input manger. Store it in a queue.
+        if( keysPressed.size() <= 3){
+            keysPressed.add(slot);
+            table.env.ui.placeToken(id,slot);
+
+            }
+        if(keysPressed.size()==3){
+            int[] setChosen = new int[3] ;
+            for(int i=0; i<3; i++) {
+                setChosen[i] = keysPressed.remove();
+                table.env.ui.removeToken(id, setChosen[i]);
+            }
+
+            if(env.util.testSet(table.slotsToCards(setChosen))) {
+                System.out.println("Set chosen is valid");
+                synchronized (this) {
+                    point();
+                }
+            }
+            else {
+                synchronized (this) {
+                    penalty();
+                }
+            }
+
+            }
+//                env.util.testSet(keysPressed.toArray(keysPressed.toArray(new Integer[0])));
+
+        }
+
+
+
+
+
 
     /**
      * Award a point to a player and perform other related actions.
@@ -130,6 +192,12 @@ public class Player implements Runnable {
 
         int ignored = table.countCards(); // this part is just for demonstration in the unit tests
         env.ui.setScore(id, ++score);
+        try {
+            sleep(env.config.pointFreezeMillis);
+        }
+        catch (InterruptedException e ){
+            System.out.println("Player::point : Tried to penalize player number " +id + " but failed.");
+        }
     }
 
     /**
@@ -137,6 +205,12 @@ public class Player implements Runnable {
      */
     public void penalty() {
         // TODO implement
+        try {
+            sleep(env.config.penaltyFreezeMillis);
+        }
+        catch (InterruptedException e ){
+            System.out.println("Player::point : Tried to penalize player number " +id + " but failed.");
+        }
     }
 
     public int getScore() {

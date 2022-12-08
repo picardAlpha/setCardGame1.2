@@ -17,7 +17,8 @@ public class Table {
     /**
      * The game environment object.
      */
-    private final Env env;
+    //CHANGE TO PRIVATE
+    public final Env env;
 
     /**
      * Mapping between a slot and the card placed in it (null if none).
@@ -91,10 +92,14 @@ public class Table {
             Thread.sleep(env.config.tableDelayMillis);
         } catch (InterruptedException ignored) {}
 
+
+
         cardToSlot[card] = slot;
         slotToCard[slot] = card;
 
         // TODO implement
+
+        env.ui.placeCard(card, slot);
     }
 
     /**
@@ -106,7 +111,7 @@ public class Table {
             Thread.sleep(env.config.tableDelayMillis);
         } catch (InterruptedException ignored) {}
 
-        // TODO implement
+//        // TODO implement
     }
 
     /**
@@ -116,6 +121,9 @@ public class Table {
      */
     public void placeToken(int player, int slot) {
         // TODO implement
+
+        env.ui.placeToken(player,slot);
+
     }
 
     /**
@@ -127,5 +135,15 @@ public class Table {
     public boolean removeToken(int player, int slot) {
         // TODO implement
         return false;
+    }
+
+    public int slotToCard (int slot){
+        return slotToCard[slot];
+    }
+
+    public int[] slotsToCards(int[] slots){
+        if(slots.length != 3)
+            throw new IllegalArgumentException("slotsToCards : array received is not of proper length!");
+        return new int[]{slotToCard[slots[0]],slotToCard[slots[1]],slotToCard[slots[2]]};
     }
 }
