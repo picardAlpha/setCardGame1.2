@@ -115,7 +115,7 @@ public class Dealer implements Runnable {
         while (!terminate && System.currentTimeMillis() < countdownUntil) {
             updateCountdown();
             sleepUntilWokenOrTimeout();
-            monitorPlayers();
+            monitorPlayers2();
             // Invoke only if needed. Sends dealer thread to sleep.
             removeCardsFromTable();
             // Invoke only if needed. Sends dealer thread to sleep
@@ -259,5 +259,29 @@ public class Dealer implements Runnable {
             }
         }
 
+    }
+
+    private synchronized void monitorPlayers2(){
+        for(Player player:players){
+            if(player.keysPressed.size()==3){
+                int[] chosenSlots = new int[3];
+                int[] chosenSet = new int[3];
+                for(int i=0; i<3; i++) {
+                    chosenSlots[i] = player.keysPressed.remove();
+                    table.env.ui.removeToken(player.id, chosenSlots[i]);
+                    //Convert each slot chosen to the card in the slot
+                    chosenSet[i] = table.slotToCard(chosenSlots[i]);
+                }
+                System.out.println("Dealer : Player " + player.id + " Chose slots :" + Arrays.toString(chosenSlots));
+                if(env.util.testSet(chosenSet)){
+                    player.point();
+                }
+                else{
+                    player.penalty();
+                }
+
+
+            }
+        }
     }
 }
