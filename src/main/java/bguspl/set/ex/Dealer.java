@@ -172,7 +172,7 @@ public class Dealer implements Runnable {
         // TODO: is that the intent?
         synchronized (this){
             try {
-                wait(1000);
+                wait(200);
             }
             catch(InterruptedException e){
                 System.out.println("Dealer::sleepUntilWokenOrTimeout : Dealer interrupted when trying to wait." );
@@ -232,17 +232,30 @@ public class Dealer implements Runnable {
         // The array to store the keystrokes array from the player if present in the Optional
         Integer[] chosenSetArray;
         for(Player player:players){
-            try{
-                Optional<Integer[]> chosenSet = player.checkPlayerStatus();
-                if(chosenSet.isPresent()) {
-                    chosenSetArray = chosenSet.get();
-                    System.out.println("Dealer : Player " + player.id + " Chose set :" + Arrays.toString(chosenSetArray));
-                    for (int i = 0; i < 3; i++)
-                        table.env.ui.removeToken(player.id, chosenSetArray[i]);
+            System.out.println("Dealer : Checking the status of player : " + player.id);
+            Optional<Integer[]> chosenSet = player.checkPlayerStatus();
+
+            if(chosenSet.isPresent()) {
+                chosenSetArray = chosenSet.get();
+                System.out.println("Dealer : Player " + player.id + " Chose set :" + Arrays.toString(chosenSetArray));
+                for (int i = 0; i < 3; i++) {
+                    System.out.println("Removing Token " + i);
+                    table.env.ui.removeToken(player.id, chosenSetArray[i]);
+                    //Convert each slot chosen to the card in the slot
+                    chosenSetArray[i] = table.slotToCard(chosenSetArray[i]);
                 }
-            }
-            catch(InterruptedException e){
-                System.out.println("Dealer: Caught exception from player.checkPlayerStatus.");
+                //Check the chosen cards
+                int[] setToBeTested = Arrays.stream(chosenSetArray).mapToInt(Integer::intValue).toArray();
+
+                //Penalize or reward player accordingly
+                //FIXME : Something in here causes a serious slowdown in *Dealer* thread.
+                if(env.util.testSet(setToBeTested)){
+                    player.point();
+                }
+                else{
+                    player.penalty();
+                }
+
             }
         }
 

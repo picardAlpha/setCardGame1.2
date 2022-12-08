@@ -59,6 +59,8 @@ public class Player implements Runnable {
 
     Queue<Integer> keysPressed = new LinkedList<>();
 
+    Object check;
+
 
 
 
@@ -209,10 +211,10 @@ public class Player implements Runnable {
         int ignored = table.countCards(); // this part is just for demonstration in the unit tests
         env.ui.setScore(id, ++score);
         try {
-            synchronized (this) {
+
                 sleep(env.config.pointFreezeMillis);
             }
-        }
+
         catch (InterruptedException e ){
             System.out.println("Player::point : Tried to reward player number " +id + " but failed.");
         }
@@ -237,9 +239,10 @@ public class Player implements Runnable {
 
 
 
-    public synchronized Optional<Integer[]> checkPlayerStatus() throws InterruptedException {
+    public synchronized Optional<Integer[]> checkPlayerStatus() {
         Optional<Integer[]> setChosen = Optional.empty();
         if(keysPressed.size() == 3) {
+            notifyAll();
             Integer[] setChosenArray = new Integer[3];
             for (int i = 0; i < 3; i++)
                 setChosenArray[i] = keysPressed.remove();
