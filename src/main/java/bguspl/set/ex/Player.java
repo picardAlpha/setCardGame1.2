@@ -2,10 +2,7 @@ package bguspl.set.ex;
 
 import bguspl.set.Env;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 import static java.lang.Thread.sleep;
 
@@ -102,6 +99,11 @@ public class Player implements Runnable {
 
         while (!terminate) {
             // TODO implement main player loop
+//            System.out.println("Player " +id +": My pressed keys are :" +keysPressed.toString());
+//            if(keysPressed.size() ==3)
+//                synchronized (this) {
+//                    notifyAll();
+//                }
 
         }
         if (!human) try { aiThread.join(); } catch (InterruptedException ignored) {}
@@ -147,32 +149,46 @@ public class Player implements Runnable {
         // TODO implement
 
         //a key was received from input manger. Store it in a queue.
-        if( keysPressed.size() <= 3){
+        if( keysPressed.size() < 3){
             keysPressed.add(slot);
-            table.env.ui.placeToken(id,slot);
+            table.placeToken(id,slot);
+            System.out.println("Player::keyPressed : placing token on slot " + slot);
 
             }
-        if(keysPressed.size()==3){
-            int[] setChosen = new int[3] ;
-            for(int i=0; i<3; i++) {
-                setChosen[i] = keysPressed.remove();
-                table.env.ui.removeToken(id, setChosen[i]);
-            }
-
-            if(env.util.testSet(table.slotsToCards(setChosen))) {
-                System.out.println("Set chosen is valid");
-                synchronized (this) {
-                    point();
-                }
-            }
-            else {
-                synchronized (this) {
-                    penalty();
-                }
-            }
-
-            }
-//                env.util.testSet(keysPressed.toArray(keysPressed.toArray(new Integer[0])));
+        if(keysPressed.size() ==3) {
+            synchronized (this) {
+                notifyAll();
+            }}
+//        if(keysPressed.size()==3){
+//
+//            //TODO : After placing 3 tokens, notify the dealer thread that you've made your choice and wait until he wakes you up.
+//            table.placeToken(id,slot);
+//            try{
+//                sleep(100);
+//            }
+//            catch(Exception e ){
+//                System.out.println("Tried to sleep but failed.");
+//            }
+//            int[] setChosen = new int[3] ;
+//            for(int i=0; i<3; i++) {
+//                setChosen[i] = keysPressed.remove();
+//                table.env.ui.removeToken(id, setChosen[i]);
+//            }
+//
+//            if(env.util.testSet(table.slotsToCards(setChosen))) {
+//                System.out.println("Set chosen is valid");
+//                synchronized (this) {
+//                    point();
+//                }
+//            }
+//            else {
+//                System.out.println("Bad set.");
+//                synchronized (this) {
+//                    penalty();
+//                }
+//            }
+//
+//            }
 
         }
 
@@ -193,10 +209,12 @@ public class Player implements Runnable {
         int ignored = table.countCards(); // this part is just for demonstration in the unit tests
         env.ui.setScore(id, ++score);
         try {
-            sleep(env.config.pointFreezeMillis);
+            synchronized (this) {
+                sleep(env.config.pointFreezeMillis);
+            }
         }
         catch (InterruptedException e ){
-            System.out.println("Player::point : Tried to penalize player number " +id + " but failed.");
+            System.out.println("Player::point : Tried to reward player number " +id + " but failed.");
         }
     }
 
@@ -215,5 +233,19 @@ public class Player implements Runnable {
 
     public int getScore() {
         return score;
+    }
+
+
+
+    public synchronized Optional<Integer[]> checkPlayerStatus() throws InterruptedException {
+        Optional<Integer[]> setChosen = Optional.empty();
+        if(keysPressed.size() == 3) {
+            Integer[] setChosenArray = new Integer[3];
+            for (int i = 0; i < 3; i++)
+                setChosenArray[i] = keysPressed.remove();
+            setChosen = Optional.of(setChosenArray);
+
+        }
+        return setChosen;
     }
 }

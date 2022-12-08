@@ -3,8 +3,12 @@ package bguspl.set.ex;
 import bguspl.set.Env;
 import org.w3c.dom.ls.LSOutput;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -81,13 +85,19 @@ public class Dealer implements Runnable {
         }
         System.out.println();
         System.out.println("CountDownUntil = " +countdownUntil);
+        // Added: Initializing all player threads
+        ExecutorService executorService = Executors.newFixedThreadPool(players.length);
+        for(Player player:players)
+            executorService.submit(player);
 
         while (!shouldFinish()) {
             Collections.shuffle(deck);
             if(timer.get()==60)
                 placeCardsOnTable();
+
+
             countdownLoop();
-//            removeAllCardsFromTable();
+            removeAllCardsFromTable();
 
             //Added
             System.out.println("CountDownUntil = " +countdownUntil);
@@ -104,12 +114,8 @@ public class Dealer implements Runnable {
         resetCountdown();
         while (!terminate && System.currentTimeMillis() < countdownUntil) {
             updateCountdown();
-            try {
-                sleepUntilWokenOrTimeout();
-            }
-            catch (InterruptedException e ) {
-            }
-
+            sleepUntilWokenOrTimeout();
+            monitorPlayers();
             // Invoke only if needed. Sends dealer thread to sleep.
             removeCardsFromTable();
             // Invoke only if needed. Sends dealer thread to sleep
@@ -121,7 +127,7 @@ public class Dealer implements Runnable {
      * Called when the game should be terminated due to an external event.
      */
     public void terminate() {
-        // TODO implement
+        // TODO implement: 1. There are no more sets in the deck And the table.
     }
 
     /**
@@ -162,10 +168,16 @@ public class Dealer implements Runnable {
     /**
      * Sleep for a fixed amount of time or until the thread is awakened for some purpose.
      */
-    private void sleepUntilWokenOrTimeout() throws InterruptedException {
+    private void sleepUntilWokenOrTimeout()  {
         // TODO: is that the intent?
         synchronized (this){
-            wait(200);
+            try {
+                wait(1000);
+            }
+            catch(InterruptedException e){
+                System.out.println("Dealer::sleepUntilWokenOrTimeout : Dealer interrupted when trying to wait." );
+
+            }
         }
 
     }
@@ -214,5 +226,25 @@ public class Dealer implements Runnable {
     // Dealer receives request from player
     public void placeToken(int player, int slot){
         table.placeToken(player,slot);
+    }
+
+    private void monitorPlayers(){
+        // The array to store the keystrokes array from the player if present in the Optional
+        Integer[] chosenSetArray;
+        for(Player player:players){
+            try{
+                Optional<Integer[]> chosenSet = player.checkPlayerStatus();
+                if(chosenSet.isPresent()) {
+                    chosenSetArray = chosenSet.get();
+                    System.out.println("Dealer : Player " + player.id + " Chose set :" + Arrays.toString(chosenSetArray));
+                    for (int i = 0; i < 3; i++)
+                        table.env.ui.removeToken(player.id, chosenSetArray[i]);
+                }
+            }
+            catch(InterruptedException e){
+                System.out.println("Dealer: Caught exception from player.checkPlayerStatus.");
+            }
+        }
+
     }
 }
