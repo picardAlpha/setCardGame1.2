@@ -59,7 +59,6 @@ public class Player implements Runnable {
 
     Queue<Integer> keysPressed = new LinkedList<>();
 
-    Object check;
 
 
 
@@ -160,7 +159,8 @@ public class Player implements Runnable {
         if(keysPressed.size() ==3) {
             synchronized (this) {
                 notifyAll();
-            }}
+            }
+        }
 //        if(keysPressed.size()==3){
 //
 //            //TODO : After placing 3 tokens, notify the dealer thread that you've made your choice and wait until he wakes you up.

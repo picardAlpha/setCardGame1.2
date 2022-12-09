@@ -107,9 +107,12 @@ public class Table {
      * @param slot - the slot from which to remove the card.
      */
     public void removeCard(int slot) {
-//        try {
-//            Thread.sleep(env.config.tableDelayMillis);
-//        } catch (InterruptedException ignored) {}
+
+        env.ui.removeCard(slot);
+
+        try {
+            Thread.sleep(env.config.tableDelayMillis);
+        } catch (InterruptedException ignored) {}
 //
 ////        // TODO implement
     }

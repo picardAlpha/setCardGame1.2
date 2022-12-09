@@ -1,7 +1,6 @@
 package bguspl.set.ex;
 
 import bguspl.set.Env;
-import org.w3c.dom.ls.LSOutput;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -172,7 +171,7 @@ public class Dealer implements Runnable {
         // TODO: is that the intent?
         synchronized (this){
             try {
-                wait(200);
+                wait(8);
             }
             catch(InterruptedException e){
                 System.out.println("Dealer::sleepUntilWokenOrTimeout : Dealer interrupted when trying to wait." );
@@ -250,7 +249,10 @@ public class Dealer implements Runnable {
                 //Penalize or reward player accordingly
                 //FIXME : Something in here causes a serious slowdown in *Dealer* thread.
                 if(env.util.testSet(setToBeTested)){
+
+
                     player.point();
+
                 }
                 else{
                     player.penalty();
@@ -261,7 +263,7 @@ public class Dealer implements Runnable {
 
     }
 
-    private synchronized void monitorPlayers2(){
+    private void monitorPlayers2(){
         for(Player player:players){
             if(player.keysPressed.size()==3){
                 int[] chosenSlots = new int[3];
@@ -272,8 +274,18 @@ public class Dealer implements Runnable {
                     //Convert each slot chosen to the card in the slot
                     chosenSet[i] = table.slotToCard(chosenSlots[i]);
                 }
+                System.out.println("Card in deck before removal: " + deck);
                 System.out.println("Dealer : Player " + player.id + " Chose slots :" + Arrays.toString(chosenSlots));
                 if(env.util.testSet(chosenSet)){
+                    for(int i=0; i<3;i++) {
+                        deck.remove(chosenSlots[i]);
+                        table.removeCard(chosenSlots[i]);
+                        if(deck.size() > 12)
+                            //TODO Fix this deck.get()
+                            table.placeCard(deck.get(i+12),chosenSlots[i]);
+                    }
+                    System.out.println("Cards in deck after removal: " + deck);
+
                     player.point();
                 }
                 else{
