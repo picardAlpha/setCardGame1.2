@@ -159,6 +159,8 @@ public class Dealer implements Runnable {
             System.out.println("Dealer : Trying to place cards on table. ");
             for (int i = 0; i < 12 && i<deck.size(); i++) {  // Place cards until table is full or deck is empty
                 table.placeCard(deck.indexOf(i), i);
+                //Removing cards that were placed on the table from the deck.
+                deck.remove(i);
             }
             tableIsFull.getAndSet(true);
         }
@@ -266,7 +268,9 @@ public class Dealer implements Runnable {
     private void monitorPlayers2(){
         for(Player player:players){
             if(player.keysPressed.size()==3){
+                //Array that contains the numbers of the chosen slots.
                 int[] chosenSlots = new int[3];
+                //Array that contains the numbers of the cards that were chosen.
                 int[] chosenSet = new int[3];
                 for(int i=0; i<3; i++) {
                     chosenSlots[i] = player.keysPressed.remove();
@@ -282,6 +286,7 @@ public class Dealer implements Runnable {
                         table.removeCard(chosenSlots[i]);
                         if(deck.size() > 12)
                             //TODO Fix this deck.get()
+                            //FIXME : Cards repeating!!
                             table.placeCard(deck.get(i+12),chosenSlots[i]);
                     }
                     System.out.println("Cards in deck after removal: " + deck);
