@@ -159,8 +159,7 @@ public class Dealer implements Runnable {
             System.out.println("Dealer : Trying to place cards on table. ");
             for (int i = 0; i < 12 && i<deck.size(); i++) {  // Place cards until table is full or deck is empty
                 table.placeCard(deck.indexOf(i), i);
-                //Removing cards that were placed on the table from the deck.
-                deck.remove(i);
+
             }
             tableIsFull.getAndSet(true);
         }
