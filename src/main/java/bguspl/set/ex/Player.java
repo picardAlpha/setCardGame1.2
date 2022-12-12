@@ -57,7 +57,13 @@ public class Player implements Runnable {
     //Added
     List<Character> keyList ;
 
+    Dealer dealer;
+
+    // Maintain a queue with key presses. when done notify the dealer thread that you're ready to be checked.
     Queue<Integer> keysPressed = new LinkedList<>();
+
+    long timeLastTokenPlaced;
+
 
 
 
@@ -78,6 +84,7 @@ public class Player implements Runnable {
         this.table = table;
         this.id = id;
         this.human = human;
+        this.dealer = dealer;
         keyList = id==1?
                 new ArrayList<Character>() {{
                     add('q');
@@ -156,11 +163,15 @@ public class Player implements Runnable {
             System.out.println("Player::keyPressed : placing token on slot " + slot);
 
             }
-        if(keysPressed.size() ==3) {
-            synchronized (this) {
-                notifyAll();
-            }
+        if(keysPressed.size() == 3 ) {
+            timeLastTokenPlaced = System.currentTimeMillis();
+            System.out.println("Player "+id + ": Chose set at time " + timeLastTokenPlaced);
+            dealer.notifyDealer(id,keysPressed,timeLastTokenPlaced);
+
+
         }
+
+
 //        if(keysPressed.size()==3){
 //
 //            //TODO : After placing 3 tokens, notify the dealer thread that you've made your choice and wait until he wakes you up.

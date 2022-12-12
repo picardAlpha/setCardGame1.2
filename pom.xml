@@ -47,7 +47,7 @@
       <dependency>
           <groupId>com.google.guava</groupId>
           <artifactId>guava</artifactId>
-          <version>31.1-jre</version> <!-- or 23.5-android for the Android flavor -->
+          <version>31.1-jre</version>
       </dependency>
       <dependency>
           <groupId>org.junit.jupiter</groupId>

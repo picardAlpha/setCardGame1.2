@@ -2,10 +2,7 @@ package bguspl.set.ex;
 
 import bguspl.set.Env;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -159,12 +156,10 @@ public class Dealer implements Runnable {
             System.out.println("Dealer : Trying to place cards on table. ");
             for (int i = 0; i < 12 && i<deck.size(); i++) {  // Place cards until table is full or deck is empty
                 table.placeCard(deck.indexOf(i), i);
-
             }
             tableIsFull.getAndSet(true);
         }
     }
-
     /**
      * Sleep for a fixed amount of time or until the thread is awakened for some purpose.
      */
@@ -176,10 +171,8 @@ public class Dealer implements Runnable {
             }
             catch(InterruptedException e){
                 System.out.println("Dealer::sleepUntilWokenOrTimeout : Dealer interrupted when trying to wait." );
-
             }
         }
-
     }
 
     /**
@@ -194,7 +187,9 @@ public class Dealer implements Runnable {
             boolean warn = timer.get() <= 10;
             table.env.ui.setCountdown(timer.get()*1000, warn);
             lastTime = System.currentTimeMillis();
-            if(timer.get() == 0 ){ timer.set(60); tableIsFull.set(false);}
+            if(timer.get() == 0 )
+            {
+                timer.set(60); tableIsFull.set(false);}
         }
     }
 
@@ -273,7 +268,7 @@ public class Dealer implements Runnable {
                 int[] chosenSet = new int[3];
                 for(int i=0; i<3; i++) {
                     chosenSlots[i] = player.keysPressed.remove();
-                    table.env.ui.removeToken(player.id, chosenSlots[i]);
+                    table.removeToken(player.id, chosenSlots[i]);
                     //Convert each slot chosen to the card in the slot
                     chosenSet[i] = table.slotToCard(chosenSlots[i]);
                 }
@@ -300,4 +295,58 @@ public class Dealer implements Runnable {
             }
         }
     }
+
+
+    public synchronized void notifyDealer(int playerID, Queue<Integer> keysPressed, long timestamp){
+        //TODO : When a player activates this function check if his set is valid. if no, then penalty, if is valid check all other players.
+        //convert queue to chosen slots and set.
+        boolean isFirst = true;
+        boolean isCompeteOnResources = false;
+        boolean shouldGetPoint = true;
+
+        int[] slotsChosen = new int[3];
+        int[] setChosen = new int[3];
+        for(int i=0; i<3 ; i++){
+            slotsChosen[i] = keysPressed.remove();
+            setChosen[i] = table.slotToCard(slotsChosen[i]);
+        }
+
+        System.out.println("Dealer : Player " + playerID + " notified me that he chose slots : " + Arrays.toString(slotsChosen) +" which contains the set : "+ Arrays.toString(setChosen)) ;
+
+        if(!env.util.testSet(setChosen)){
+            shouldGetPoint = false;
+        }
+        else{
+            for(Player player : players){
+                if(player.keysPressed.size()==3 && player.timeLastTokenPlaced < timestamp) {
+                    Queue<Integer> opponentKeys = player.keysPressed;
+                    Queue<Integer> copyOpQueue = player.keysPressed; // TODO take the opponentKeys and hard copy them
+                    //TODO hard copy the opponent queue:  int[] opQueueAsArray = convertOpQueue(copyOpQueue)
+                    boolean isOpQueueValid = true; //TODO 2 convert op queue to int[]  and run: isOpQueueValid = env.util.testSet(opQueueAsArray);
+                    if(isOpQueueValid)
+                    {
+                        for (Integer slot: slotsChosen) {
+                            if ( opponentKeys.contains(slot))
+                            {
+                                isFirst = false;
+                                isCompeteOnResources = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            shouldGetPoint = isFirst && !isCompeteOnResources;
+        }
+
+
+        if(shouldGetPoint){
+            players[playerID].point();
+
+        }else{
+            players[playerID].penalty();
+        }
+    }
 }
+

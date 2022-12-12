@@ -2,9 +2,7 @@ package bguspl.set.ex;
 
 import bguspl.set.Env;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +28,9 @@ public class Table {
      */
     protected final Integer[] cardToSlot; // slot per card (if any)
 
+
+    Queue<int[]> keysPressed = new LinkedList<>();
+
     /**
      * Constructor for testing.
      *
@@ -50,9 +51,13 @@ public class Table {
      * @param env - the game environment objects.
      */
     public Table(Env env) {
-
         this(env, new Integer[env.config.tableSize], new Integer[env.config.deckSize]);
     }
+
+
+
+
+
 
     /**
      * This method prints all possible legal sets of cards that are currently on the table.
@@ -137,6 +142,7 @@ public class Table {
      */
     public boolean removeToken(int player, int slot) {
         // TODO implement
+        env.ui.removeToken(player,slot);
         return false;
     }
 
@@ -148,5 +154,12 @@ public class Table {
         if(slots.length != 3)
             throw new IllegalArgumentException("slotsToCards : array received is not of proper length!");
         return new int[]{slotToCard[slots[0]],slotToCard[slots[1]],slotToCard[slots[2]]};
+    }
+
+
+    public void addToPressedKeys(int playerID, int slot){
+        keysPressed.add(new int [] {playerID,slot});
+
+
     }
 }
